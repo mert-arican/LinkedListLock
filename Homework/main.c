@@ -188,9 +188,17 @@ int _getPositionOfTheValue(node *node, int value, int position, int M) {
  * returns: the position of the given value if found in chain, -1 otherwise.
  */
 
-int getPositionOfTheValue(node *node, int value, int M) {
-    return _getPositionOfTheValue(node, value, 0, M);
+int getPositionOfTheValue(node *chain, int value, int M) {
+    return _getPositionOfTheValue(chain, value, 0, M);
 }
+
+/*
+ * Function: getCommonValue
+ * ________________________
+ * Finds and returns the common value amongs the chains of the lock.
+ *
+ * returns: common value if any, -1 otherwise.
+ */
 
 int getCommonValue(node *chain1, node *chain2, node *chain3, int M) {
     int i = 0;
@@ -203,7 +211,22 @@ int getCommonValue(node *chain1, node *chain2, node *chain3, int M) {
     return -1;
 }
 
-int getNumberOfRollsRequired(int value, node *fixedChain, node *chainToRoll, enum direction direction, int M) {
+/*
+ * Function: getNumberOfRollsRequired
+ * __________________________________
+ * Calculates the required number of rolls for common value to get aligned vertically in the specified direction.
+ *
+ * fixedChain: first chain of the lock. Used as reference.
+ * chainToRoll: chain to move
+ * value: value to align
+ * direction: direction of the roll
+ * M: number of cells in chain
+ *
+ * returns: the number of rolls meets the criteria above
+ *      if value is not common in each than it is infinite loop
+ */
+
+int getNumberOfRollsRequired(node *fixedChain, node *chainToRoll, int value, enum direction direction, int M) {
     int count = 0;
     int initialPosition = getPositionOfTheValue(chainToRoll, value, M);
     int destinationPosition = getPositionOfTheValue(fixedChain, value, M);
@@ -232,22 +255,27 @@ int getNumberOfRollsRequired(int value, node *fixedChain, node *chainToRoll, enu
  *          - contains the randomly generated common value (i.e. password value).
  *          - and contains no duplicate values.
  *
+ *      !!! Sometimes (if N is the minimum N value for the M value) array created in such a way that, there is no value that fits for the last
+ *              cell of the last chain, and that causes infinite loop. If 'numTries' exceeds 100.000,
+ *              then function calls itself again and returns that value. !!!
+ *
  *      !!! Caller is responsible for freeing the memory used by the array. !!!
  */
 
 int* getArrayOfRandomIntegersToCreateLock(int M, int N) {
-    int i = 0, count = 0;
+    int i = 0, numTries = 0, count = 0;
     int numberOfIntegersRequired = M*3;
     int *array = malloc(sizeof(int) * numberOfIntegersRequired);
-    
+    printf("Called\n");
     int randomValue = getRandomIntegerBetweenClosedRange(1, N);
     int commonValue = randomValue;
+    int minimumN = ((3 * (M-1)) / 2) + ((3 * (M-1)) % 2);
 //    printf("random: %d\n", randomValue);
     for (i=0; i < 3; i++) { array[i*M] = commonValue; }
-    
     while (count < numberOfIntegersRequired) {
         randomValue = getRandomIntegerBetweenClosedRange(1, N);
-        
+        numTries++;
+        if (N == minimumN && numTries == 100000) { free(array); return getArrayOfRandomIntegersToCreateLock(M, N); }
         if (count % M == 0) { count++; }
         
         // if it is for the first two chains...
@@ -346,7 +374,7 @@ int main(int argc, const char * argv[]) {
     printf("pos: %d\n", getPositionOfTheValue(chain2, commonValue, M));
     printf("pos: %d\n", getPositionOfTheValue(chain3, commonValue, M));
 
-    printf("num rolls required (left): %d\n", getNumberOfRollsRequired(commonValue, chain1, chain2, left, M));
-    printf("num rolls required (right): %d\n", getNumberOfRollsRequired(commonValue, chain1, chain2, right, M));
+//    printf("num rolls required (left): %d\n", getNumberOfRollsRequired(commonValue, chain1, chain2, left, M));
+//    printf("num rolls required (right): %d\n", getNumberOfRollsRequired(commonValue, chain1, chain2, right, M));
     return 0;
 }
