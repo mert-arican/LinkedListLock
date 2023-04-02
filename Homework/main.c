@@ -118,6 +118,119 @@ void printChain(node *chain, int M) {
     _printChain(chain, 0, M);
 }
 
+
+// MARK: - Creating the lock
+
+/*
+ * Function: getArrayOfRandomIntegersToCreateLock
+ * ______________________________________________
+ * Creates an array of integers to create lock.
+ *
+ * M: How many cells are in each chain of lock.
+ * N: Maximum value of the cell.
+ *
+ * returns: an array with 'M*3' elements that is appropriate for creating lock.
+ *      Every "M piece" of the array: (if 'M' = 4 then "M piece" means
+ *              subarrays between indices 0,1,2,3 - 4,5,6,7 - 8,9,10,11 in the given order)
+ *          - contains random values between 1-N.
+ *          - contains the randomly generated common value (i.e. password value).
+ *          - and contains no duplicate values.
+ *
+ *      !!! Sometimes (if N is the minimum N value for the M value) array created in such a way that, there is no value that fits for the last
+ *              cell of the last chain, and that causes infinite loop. If 'numTries' exceeds 100.000,
+ *              then function calls itself again and returns that value. !!!
+ *
+ *      !!! Caller is responsible for freeing the memory used by the array. !!!
+ */
+
+int* getArrayOfRandomIntegersToCreateLock(int M, int N) {
+    int i = 0, numTries = 0, count = 0;
+    int numberOfIntegersRequired = M*3;
+    int *array = malloc(sizeof(int) * numberOfIntegersRequired);
+    printf("Called\n");
+    int randomValue = getRandomIntegerBetweenClosedRange(1, N);
+    int commonValue = randomValue;
+    int minimumN = ((3 * (M-1)) / 2) + ((3 * (M-1)) % 2);
+//    printf("random: %d\n", randomValue);
+    for (i=0; i < 3; i++) { array[i*M] = commonValue; }
+    while (count < numberOfIntegersRequired) {
+        randomValue = getRandomIntegerBetweenClosedRange(1, N);
+        numTries++;
+        if (N == minimumN && numTries == 100000) { free(array); return getArrayOfRandomIntegersToCreateLock(M, N); }
+        if (count % M == 0) { count++; }
+        
+        // if it is for the first two chains...
+        if (count < (2*M)) {
+            if (!contains(array, randomValue, 1, (count >= M ? M : 0), count)) {
+                array[count++] = randomValue;
+            }
+        }
+        // if it is for the last chain...
+        else {
+            if (!contains(array, randomValue, 2, 0, count) && !contains(array, randomValue, 1, 2*M, count)) {
+                array[count++] = randomValue;
+            }
+        }
+    }
+    // put common value at random positions..
+    for (i = 0; i < 3; i++) {
+        int randomAppropriatePosition = getRandomIntegerBetweenClosedRange(i*M, ((i+1)*M)-1);
+        swap(array, i*M, randomAppropriatePosition);
+    }
+    return array;
+}
+
+/*
+ * Function: getChains
+ * ___________________
+ * Takes the initial nodes of each chain of the lock. Adds other nodes to each chain
+ *          and makes them circular linked list. Assigns the appropriate random integer
+ *          values to create lock to each node. And then prints the initial state of the lock.
+ *
+ * chain1: first node of the first chain
+ * chain2: first node of the second chain
+ * chain3: first node of the third chain
+ * N: Maximum value of the cell.
+ * M: How many cells are in each chain of lock.
+ *
+ *      !!! Caller is responsible for freeing the memory used by the lock (i.e linked lists). !!!
+ */
+
+void getChains(node *chain1, node *chain2, node *chain3, int N, int M) {
+    int i = 0, j = 0;
+    int *arrayOfRandomIntegers = getArrayOfRandomIntegersToCreateLock(M, N);
+    node *arrayOfChains[3] = { chain1, chain2, chain3 };
+    //    printf("NULL: %p\n", NULL);
+    for (i = 0; i < 3; i++) {
+        node *chain = arrayOfChains[i];
+        for (j = 0; j < M; j++) {
+            int index = i * M + j;
+            chain->number = arrayOfRandomIntegers[index];
+            if (j < M-1) {
+                node *newNode = malloc(sizeof(node));
+                chain->next = newNode;
+                newNode -> next = NULL;
+                newNode -> prev = chain;
+                chain = newNode;
+            }
+            else {
+                chain -> next = arrayOfChains[i];
+                arrayOfChains[i] -> prev = chain;
+            }
+        }
+    }
+    
+    printf("\nInitial state of the lock\n");
+    for (i = 0; i < 3; i++) {
+        printf("\nChain %d\n", i+1);
+        printChain(arrayOfChains[i], M);
+    }
+    printf("\n");
+    
+    free(arrayOfRandomIntegers);
+}
+
+
 // MARK: - Value at the position
 
 /*
@@ -192,6 +305,7 @@ int getPositionOfTheValue(node *chain, int value, int M) {
     return _getPositionOfTheValue(chain, value, 0, M);
 }
 
+
 /*
  * Function: getCommonValue
  * ________________________
@@ -210,6 +324,20 @@ int getCommonValue(node *chain1, node *chain2, node *chain3, int M) {
     }
     return -1;
 }
+
+
+void printCommonValueAndItsPositions(node *chain1, node *chain2, node *chain3, int M) {
+    int i = 0;
+    node *arrayOfChains[3] = { chain1, chain2, chain3 };
+    char *arrayOfTitles[3] = { "first", "second", "third" };
+    int commonValue = getCommonValue(chain1, chain2, chain3, M);
+    printf("Common value is: %d\n", commonValue);
+    for (i = 0; i < 3; i++) {
+        int position = getPositionOfTheValue(arrayOfChains[i], commonValue, M);
+        printf("Position of the common value at the %s chain: %d\n", arrayOfTitles[i], position);
+    }
+}
+
 
 /*
  * Function: getNumberOfRollsRequired
@@ -238,105 +366,9 @@ int getNumberOfRollsRequired(node *fixedChain, node *chainToRoll, int value, enu
     return count;
 }
 
-// MARK: - Creating the lock
 
-/*
- * Function: getArrayOfRandomIntegersToCreateLock
- * ______________________________________________
- * Creates an array of integers to create lock.
- *
- * M: How many cells are in each chain of lock.
- * N: Maximum value of the cell.
- *
- * returns: an array with 'M*3' elements that is appropriate for creating lock.
- *      Every "M piece" of the array: (if 'M' = 4 then "M piece" means
- *              subarrays between indices 0,1,2,3 - 4,5,6,7 - 8,9,10,11 in the given order)
- *          - contains random values between 1-N.
- *          - contains the randomly generated common value (i.e. password value).
- *          - and contains no duplicate values.
- *
- *      !!! Sometimes (if N is the minimum N value for the M value) array created in such a way that, there is no value that fits for the last
- *              cell of the last chain, and that causes infinite loop. If 'numTries' exceeds 100.000,
- *              then function calls itself again and returns that value. !!!
- *
- *      !!! Caller is responsible for freeing the memory used by the array. !!!
- */
 
-int* getArrayOfRandomIntegersToCreateLock(int M, int N) {
-    int i = 0, numTries = 0, count = 0;
-    int numberOfIntegersRequired = M*3;
-    int *array = malloc(sizeof(int) * numberOfIntegersRequired);
-    printf("Called\n");
-    int randomValue = getRandomIntegerBetweenClosedRange(1, N);
-    int commonValue = randomValue;
-    int minimumN = ((3 * (M-1)) / 2) + ((3 * (M-1)) % 2);
-//    printf("random: %d\n", randomValue);
-    for (i=0; i < 3; i++) { array[i*M] = commonValue; }
-    while (count < numberOfIntegersRequired) {
-        randomValue = getRandomIntegerBetweenClosedRange(1, N);
-        numTries++;
-        if (N == minimumN && numTries == 100000) { free(array); return getArrayOfRandomIntegersToCreateLock(M, N); }
-        if (count % M == 0) { count++; }
-        
-        // if it is for the first two chains...
-        if (count < (2*M)) {
-            if (!contains(array, randomValue, 1, (count >= M ? M : 0), count)) {
-                array[count++] = randomValue;
-            }
-        }
-        // if it is for the last chain...
-        else {
-            if (!contains(array, randomValue, 2, 0, count) && !contains(array, randomValue, 1, 2*M, count)) {
-                array[count++] = randomValue;
-            }
-        }
-    }
-    // put common value at random positions..
-    for (i = 0; i < 3; i++) {
-        int randomAppropriatePosition = getRandomIntegerBetweenClosedRange(i*M, ((i+1)*M)-1);
-        swap(array, i*M, randomAppropriatePosition);
-    }
-    return array;
-}
-
-void getChains(node *chain1, node *chain2, node *chain3, int N, int M) {
-    int i = 0, j = 0;
-    int *arrayOfRandomIntegers = getArrayOfRandomIntegersToCreateLock(M, N);
-    node *arrayOfChains[3] = { chain1, chain2, chain3 };
-    //    printf("NULL: %p\n", NULL);
-    for (i = 0; i < 3; i++) {
-        node *chain = arrayOfChains[i];
-        for (j = 0; j < M; j++) {
-            int index = i * M + j;
-            chain->number = arrayOfRandomIntegers[index];
-            if (j < M-1) {
-                node *newNode = malloc(sizeof(node));
-                chain->next = newNode;
-                newNode -> next = NULL;
-                newNode -> prev = chain;
-                chain = newNode;
-            }
-            else {
-                chain -> next = arrayOfChains[i];
-                arrayOfChains[i] -> prev = chain;
-            }
-        }
-    }
-    
-    printf("\nList\n");
-    printChain(chain1, M);
-    //    printChain(chain1, count1, M, false);
-    printf("\nList\n");
-    
-    printChain(chain2, M);
-    //    printChain(chain2, count2, M, false);
-    printf("\nList\n");
-    
-    printChain(chain3, M);
-    //    printChain(chain3, count3, M, false);
-    
-    free(arrayOfRandomIntegers);
-}
+// MARK: TODO: free chains. roll function. unlock function. explain creating strategy.
 
 int main(int argc, const char * argv[]) {
     srand((unsigned int) time(NULL));
@@ -367,12 +399,14 @@ int main(int argc, const char * argv[]) {
     node *chain3 = malloc(sizeof(node));
     getChains(chain1, chain2, chain3, N, M);
     
-    int commonValue = getCommonValue(chain1, chain2, chain3, M);
-    printf("The common value is: %d\n", commonValue);
-
-    printf("pos: %d\n", getPositionOfTheValue(chain1, commonValue, M));
-    printf("pos: %d\n", getPositionOfTheValue(chain2, commonValue, M));
-    printf("pos: %d\n", getPositionOfTheValue(chain3, commonValue, M));
+    printCommonValueAndItsPositions(chain1, chain2, chain3, M);
+    
+//    int commonValue = getCommonValue(chain1, chain2, chain3, M);
+//    printf("The common value is: %d\n", commonValue);
+//
+//    printf("pos: %d\n", getPositionOfTheValue(chain1, commonValue, M));
+//    printf("pos: %d\n", getPositionOfTheValue(chain2, commonValue, M));
+//    printf("pos: %d\n", getPositionOfTheValue(chain3, commonValue, M));
 
 //    printf("num rolls required (left): %d\n", getNumberOfRollsRequired(commonValue, chain1, chain2, left, M));
 //    printf("num rolls required (right): %d\n", getNumberOfRollsRequired(commonValue, chain1, chain2, right, M));
