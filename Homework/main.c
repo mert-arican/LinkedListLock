@@ -33,6 +33,17 @@ enum direction { left, right };
 
 
 /*
+ * Struct: node
+ * ____________
+ * Data structure used to represent roll of the chain.
+ */
+
+typedef struct Roll {
+    int amount;
+    enum direction direction;
+} Roll;
+
+/*
  * Function: swap
  * ______________
  * Swaps the elements of the array at the position 'pos1' and 'pos2'.
@@ -138,7 +149,7 @@ void printChain(node *chain, int M) {
  *
  *      !!! Sometimes (if N is the minimum N value for the M value) array created in such a way that, there is no value that fits for the last
  *              cell of the last chain, and that causes infinite loop. If 'numTries' exceeds 100.000,
- *              then function calls itself again and returns that value. !!!
+ *              then function calls itself again to get rid of the loop. !!!
  *
  *      !!! Caller is responsible for freeing the memory used by the array. !!!
  */
@@ -147,10 +158,9 @@ int* getArrayOfRandomIntegersToCreateLock(int M, int N) {
     int i = 0, numTries = 0, count = 0;
     int numberOfIntegersRequired = M*3;
     int *array = malloc(sizeof(int) * numberOfIntegersRequired);
-    printf("Called\n");
     int randomValue = getRandomIntegerBetweenClosedRange(1, N);
     int commonValue = randomValue;
-    int minimumN = ((3 * (M-1)) / 2) + ((3 * (M-1)) % 2);
+    int minimumN = ((3 * (M-1)) / 2) + ((3 * (M-1)) % 2) + 1;
 //    printf("random: %d\n", randomValue);
     for (i=0; i < 3; i++) { array[i*M] = commonValue; }
     while (count < numberOfIntegersRequired) {
@@ -181,7 +191,7 @@ int* getArrayOfRandomIntegersToCreateLock(int M, int N) {
 }
 
 /*
- * Function: getChains
+ * Function: createLock
  * ___________________
  * Takes the initial nodes of each chain of the lock. Adds other nodes to each chain
  *          and makes them circular linked list. Assigns the appropriate random integer
@@ -196,11 +206,10 @@ int* getArrayOfRandomIntegersToCreateLock(int M, int N) {
  *      !!! Caller is responsible for freeing the memory used by the lock (i.e linked lists). !!!
  */
 
-void getChains(node *chain1, node *chain2, node *chain3, int N, int M) {
+void createLock(node *chain1, node *chain2, node *chain3, int N, int M) {
     int i = 0, j = 0;
     int *arrayOfRandomIntegers = getArrayOfRandomIntegersToCreateLock(M, N);
     node *arrayOfChains[3] = { chain1, chain2, chain3 };
-    //    printf("NULL: %p\n", NULL);
     for (i = 0; i < 3; i++) {
         node *chain = arrayOfChains[i];
         for (j = 0; j < M; j++) {
@@ -358,17 +367,89 @@ int getNumberOfRollsRequired(node *fixedChain, node *chainToRoll, int value, enu
     int count = 0;
     int initialPosition = getPositionOfTheValue(chainToRoll, value, M);
     int destinationPosition = getPositionOfTheValue(fixedChain, value, M);
+    
     while (initialPosition != destinationPosition) {
-        if (direction == left) { initialPosition-- ; initialPosition = (initialPosition == 0) ? M : initialPosition; }
+        if (direction == left) { initialPosition-- ; initialPosition = (initialPosition == -1) ? M : initialPosition; }
         else { initialPosition++ ; initialPosition = (initialPosition == M) ? 0 : initialPosition ;}
         count++;
     }
     return count;
 }
 
+void _roll(node *node, enum direction direction, int count, int M) {
+    if (count != M-1) {
+        struct node *nextNode = (direction == right) ? node->prev : node->next;
+        int next = (direction == right) ? node->prev->number : node->next->number;
+        nextNode->number = node->number;
+        node->number = next;
+        _roll(nextNode, direction, ++count, M);
+    }
+}
 
+void roll(node *chain, enum direction direction, int M) {
+    _roll(chain, direction, 0, M);
+}
 
-// MARK: TODO: free chains. roll function. unlock function. explain creating strategy.
+Roll getOptimumRoll(node *fixedChain, node *chainToRoll, int value, int M) {
+    Roll leftRoll = { 0, left };
+    Roll rightRoll = { 0, right };
+    leftRoll.amount = getNumberOfRollsRequired(fixedChain, chainToRoll, value, left, M);
+    rightRoll.amount = getNumberOfRollsRequired(fixedChain, chainToRoll, value, right, M);
+    return leftRoll.amount < rightRoll.amount ? leftRoll : rightRoll;
+}
+
+void printRollInfo(Roll roll, int chainNumber) {
+    if (roll.amount == 0) {
+        printf("\nNo roll required for %s chain.%s",
+               chainNumber == 2 ? "second" : "third",
+               chainNumber == 2 ? "" : "\n"
+               );
+    }
+    else {
+        printf("\nMinimum required roll for the %s chain is: %d, in the %s direction.%s",
+               chainNumber == 2 ? "second" : "third",
+               roll.amount,
+               roll.direction == left ? "left" : "right",
+               chainNumber == 2 ? "": "\n"
+               );
+    }
+}
+
+void printOptimalRolls(node *chain1, node *chain2, node *chain3, int M) {
+    int commonValue = getCommonValue(chain1, chain2, chain3, M);
+    Roll chain2Roll = getOptimumRoll(chain1, chain2, commonValue, M);
+    Roll chain3Roll = getOptimumRoll(chain1, chain3, commonValue, M);
+    printRollInfo(chain2Roll, 2);
+    printRollInfo(chain3Roll, 3);
+}
+
+void unlock(node *chain1, node *chain2, node *chain3, int M) {
+    int i = 0;
+    int commonValue = getCommonValue(chain1, chain2, chain3, M);
+    Roll chain2Roll = getOptimumRoll(chain1, chain2, commonValue, M);
+    Roll chain3Roll = getOptimumRoll(chain1, chain3, commonValue, M);
+    for (i = 0; i < chain2Roll.amount; i++) { roll(chain2, chain2Roll.direction, M); }
+    for (i = 0; i < chain3Roll.amount; i++) { roll(chain3, chain3Roll.direction, M); }
+    printf("\n\nState after unlocking \n\n");
+    printChain(chain1, M);
+    printChain(chain2, M);
+    printChain(chain3, M);
+    printf("\n\n");
+}
+
+// MARK: Free the memory used by the lock
+
+void _freeChain(node *node, int count, int M) {
+    if (count != M-1) {
+        struct node *next = node->next;
+        free(node);
+        _freeChain(next, ++count, M);
+    }
+}
+
+void freeChain(node *chain, int M) {
+    _freeChain(chain, 0, M);
+}
 
 int main(int argc, const char * argv[]) {
     srand((unsigned int) time(NULL));
@@ -382,9 +463,8 @@ int main(int argc, const char * argv[]) {
         scanf("%d", &N);
         printf("Enter M: ");
         scanf("%d", &M);
-        
-        if (N < ((2*M)-1)-100) {
-            printf("N value should be more than or equal to the value of 2*M - 1.\n");
+        if (N < ((3 * (M-1)) / 2) + ((3 * (M-1)) % 2)) {
+            printf("N value should be bigger.\n");
         }
         else if (M < 1) {
             printf("M should be more than or equal to 1.\n");
@@ -397,18 +477,12 @@ int main(int argc, const char * argv[]) {
     node *chain1 = malloc(sizeof(node));
     node *chain2 = malloc(sizeof(node));
     node *chain3 = malloc(sizeof(node));
-    getChains(chain1, chain2, chain3, N, M);
-    
+    createLock(chain1, chain2, chain3, N, M);
     printCommonValueAndItsPositions(chain1, chain2, chain3, M);
-    
-//    int commonValue = getCommonValue(chain1, chain2, chain3, M);
-//    printf("The common value is: %d\n", commonValue);
-//
-//    printf("pos: %d\n", getPositionOfTheValue(chain1, commonValue, M));
-//    printf("pos: %d\n", getPositionOfTheValue(chain2, commonValue, M));
-//    printf("pos: %d\n", getPositionOfTheValue(chain3, commonValue, M));
-
-//    printf("num rolls required (left): %d\n", getNumberOfRollsRequired(commonValue, chain1, chain2, left, M));
-//    printf("num rolls required (right): %d\n", getNumberOfRollsRequired(commonValue, chain1, chain2, right, M));
+    printOptimalRolls(chain1, chain2, chain3, M);
+    unlock(chain1, chain2, chain3, M);
+    freeChain(chain1, M);
+    freeChain(chain2, M);
+    freeChain(chain3, M);
     return 0;
 }
