@@ -376,6 +376,8 @@ int getNumberOfRollsRequired(node *fixedChain, node *chainToRoll, int value, enu
     return count;
 }
 
+// Recursive function that rolls the chain in direction specified.
+
 void _roll(node *node, enum direction direction, int count, int M) {
     if (count != M-1) {
         struct node *nextNode = (direction == right) ? node->prev : node->next;
@@ -390,6 +392,8 @@ void roll(node *chain, enum direction direction, int M) {
     _roll(chain, direction, 0, M);
 }
 
+// Function that determines the optimal roll based on results of comparing left and right rolls.
+
 Roll getOptimumRoll(node *fixedChain, node *chainToRoll, int value, int M) {
     Roll leftRoll = { 0, left };
     Roll rightRoll = { 0, right };
@@ -397,6 +401,8 @@ Roll getOptimumRoll(node *fixedChain, node *chainToRoll, int value, int M) {
     rightRoll.amount = getNumberOfRollsRequired(fixedChain, chainToRoll, value, right, M);
     return leftRoll.amount < rightRoll.amount ? leftRoll : rightRoll;
 }
+
+// Function that prints the roll info.
 
 void printRollInfo(Roll roll, int chainNumber) {
     if (roll.amount == 0) {
@@ -415,6 +421,8 @@ void printRollInfo(Roll roll, int chainNumber) {
     }
 }
 
+// Function that prints the optimal roll info.
+
 void printOptimalRolls(node *chain1, node *chain2, node *chain3, int M) {
     int commonValue = getCommonValue(chain1, chain2, chain3, M);
     Roll chain2Roll = getOptimumRoll(chain1, chain2, commonValue, M);
@@ -422,6 +430,9 @@ void printOptimalRolls(node *chain1, node *chain2, node *chain3, int M) {
     printRollInfo(chain2Roll, 2);
     printRollInfo(chain3Roll, 3);
 }
+
+// Function that rolls second and third chain in needed amount at the right direction
+// and makes common value aligned vertically in all three of them.
 
 void unlock(node *chain1, node *chain2, node *chain3, int M) {
     int i = 0;
@@ -437,7 +448,7 @@ void unlock(node *chain1, node *chain2, node *chain3, int M) {
     printf("\n\n");
 }
 
-// MARK: Free the memory used by the lock
+// Frees the memory used by the lock
 
 void _freeChain(node *node, int count, int M) {
     if (count != M-1) {
@@ -449,6 +460,10 @@ void _freeChain(node *node, int count, int M) {
 
 void freeChain(node *chain, int M) {
     _freeChain(chain, 0, M);
+}
+
+void freeLock(node *chain1, node *chain2, node *chain3, int M) {
+    freeChain(chain1, M); freeChain(chain2, M); freeChain(chain3, M);
 }
 
 int main(int argc, const char * argv[]) {
@@ -481,8 +496,6 @@ int main(int argc, const char * argv[]) {
     printCommonValueAndItsPositions(chain1, chain2, chain3, M);
     printOptimalRolls(chain1, chain2, chain3, M);
     unlock(chain1, chain2, chain3, M);
-    freeChain(chain1, M);
-    freeChain(chain2, M);
-    freeChain(chain3, M);
+    freeLock(chain1, chain2, chain3, M);
     return 0;
 }
