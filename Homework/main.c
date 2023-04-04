@@ -33,9 +33,9 @@ enum direction { left, right };
 
 
 /*
- * Struct: node
+ * Struct: Roll
  * ____________
- * Data structure used to represent roll of the chain.
+ * Data structure used to represent a roll of the chain.
  */
 
 typedef struct Roll {
