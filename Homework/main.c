@@ -13,7 +13,7 @@
 /*
  * Struct: node
  * ____________
- * linked list used to represent chain of the lock.
+ * linked list used to represent chain of a lock.
  */
 
 typedef struct node {
@@ -26,7 +26,7 @@ typedef struct node {
 /*
  * Enum: direction
  * _______________
- * enum that is used to represent direction of the roll.
+ * enum that is used to represent direction of a roll.
  */
 
 enum direction { left, right };
@@ -35,7 +35,7 @@ enum direction { left, right };
 /*
  * Struct: Roll
  * ____________
- * Data structure used to represent a roll of the chain.
+ * Data structure used to represent a roll of a chain.
  */
 
 typedef struct Roll {
@@ -148,7 +148,7 @@ void printChain(node *chain, int M) {
  *          - and contains no duplicate values.
  *
  *      !!! Sometimes (if N is the minimum N value for the M value) array created in such a way that, there is no value that fits for the last
- *              cell of the last chain, and that causes infinite loop. If 'numTries' exceeds 100.000,
+ *              cell of the last chain, and that causes infinite loop. If 'numTries' exceeds 1.000.000,
  *              then function calls itself again to get rid of the loop. !!!
  *
  *      !!! Caller is responsible for freeing the memory used by the array. !!!
@@ -160,13 +160,10 @@ int* getArrayOfRandomIntegersToCreateLock(int M, int N) {
     int *array = malloc(sizeof(int) * numberOfIntegersRequired);
     int randomValue = getRandomIntegerBetweenClosedRange(1, N);
     int commonValue = randomValue;
-    int minimumN = ((3 * (M-1)) / 2) + ((3 * (M-1)) % 2) + 1;
-//    printf("random: %d\n", randomValue);
     for (i=0; i < 3; i++) { array[i*M] = commonValue; }
     while (count < numberOfIntegersRequired) {
         randomValue = getRandomIntegerBetweenClosedRange(1, N);
-        numTries++;
-        if (N == minimumN && numTries == 100000) { free(array); return getArrayOfRandomIntegersToCreateLock(M, N); }
+        if (numTries++ == 1000000) { free(array); return getArrayOfRandomIntegersToCreateLock(M, N); }
         if (count % M == 0) { count++; }
         
         // if it is for the first two chains...
@@ -182,7 +179,7 @@ int* getArrayOfRandomIntegersToCreateLock(int M, int N) {
             }
         }
     }
-    // put common value at random positions..
+    // put common value at random positions...
     for (i = 0; i < 3; i++) {
         int randomAppropriatePosition = getRandomIntegerBetweenClosedRange(i*M, ((i+1)*M)-1);
         swap(array, i*M, randomAppropriatePosition);
@@ -369,14 +366,14 @@ int getNumberOfRollsRequired(node *fixedChain, node *chainToRoll, int value, enu
     int destinationPosition = getPositionOfTheValue(fixedChain, value, M);
     
     while (initialPosition != destinationPosition) {
-        if (direction == left) { initialPosition-- ; initialPosition = (initialPosition == -1) ? M : initialPosition; }
+        if (direction == left) { initialPosition-- ; initialPosition = (initialPosition == -1) ? M-1 : initialPosition; }
         else { initialPosition++ ; initialPosition = (initialPosition == M) ? 0 : initialPosition ;}
         count++;
     }
     return count;
 }
 
-// Recursive function that rolls the chain in direction specified.
+// Recursive function that rolls the chain in the direction specified.
 
 void _roll(node *node, enum direction direction, int count, int M) {
     if (count != M-1) {
@@ -474,7 +471,7 @@ int main(int argc, const char * argv[]) {
     
     // take input from user...
     while (!userHasEnteredValidInputs) {
-        printf("Enter N:");
+        printf("Enter N: ");
         scanf("%d", &N);
         printf("Enter M: ");
         scanf("%d", &M);
